@@ -1,0 +1,4 @@
+import http from 'node:http';
+import {readFile} from 'node:fs/promises';
+const types={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript; charset=utf-8'};
+http.createServer(async(req,res)=>{try{const p=new URL(req.url,'http://localhost').pathname;const name=p==='/'?'index.html':p.slice(1);const allowed=['index.html','style.css','app.js'];if(!allowed.includes(name)&&name!=='data/redewendungen-sprichwoerter.jsonl'){res.writeHead(404);res.end();return;}const file=name==='data/redewendungen-sprichwoerter.jsonl'?'./data/redewendungen-sprichwoerter.jsonl':'./dist/'+name;const data=await readFile(new URL(file,import.meta.url));res.setHeader('Content-Type',name.endsWith('.jsonl')?'application/x-ndjson; charset=utf-8':types[name.slice(name.lastIndexOf('.'))]);res.end(data);}catch{res.writeHead(404);res.end();}}).listen(5173,'0.0.0.0',()=>console.log('Local: http://localhost:5173'));
