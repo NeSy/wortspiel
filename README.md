@@ -26,19 +26,16 @@ Les contributions Wiktionary sont disponibles sous CC BY-SA 4.0 et GFDL. Toute r
 npm run build
 ```
 
-Le site est publié automatiquement depuis le dossier `docs/` de la branche `main` :
+Le site est publié automatiquement depuis `main` par le workflow [Publish GitHub Pages](.github/workflows/pages.yml) :
 https://nesy.github.io/wortspiel/
 
-Pour publier une mise à jour, exécuter les tests et la compilation, committer les modifications (y compris `docs/`), puis pousser sur `main` :
+Pour publier une mise à jour, committer les modifications puis pousser sur `main` :
 
 ```sh
-npm test
-npm run build
-# Committer les modifications, y compris docs/.
 git push origin main
 ```
 
-GitHub Pages publie automatiquement le contenu de `docs/` à chaque push. Les tests et la compilation sont exécutés localement avant le commit. Dans les paramètres Pages, la source est « Deploy from a branch », avec la branche `main` et le dossier `/docs`. Le fichier `docs/.nojekyll` permet de servir directement les fichiers statiques.
+GitHub Actions exécute les tests, construit le site et publie le contenu de `docs/` sur GitHub Pages. Aucune branche de publication séparée n’est nécessaire. Le workflow peut aussi être relancé manuellement depuis l’onglet Actions du dépôt. Dans les paramètres Pages, la source de publication doit être « GitHub Actions ».
 
 Les dictionnaires JSON importés peuvent fournir un indice allemand facultatif dans `indiceAllemand` (format objet) ou en septième position (format tableau). Les anciens fichiers à six champs restent acceptés.
 
