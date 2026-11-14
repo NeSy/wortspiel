@@ -28,7 +28,7 @@ const fallbackExpressions=expressions;
 let usagePriorities=new Map(fallbackExpressions.map(entry=>[entry[0].toLocaleLowerCase('de'),entry[7]]));
 async function loadWiktionaryPhrases(){
  try{
-  const response=await fetch('./data/redewendungen-sprichwoerter.jsonl?v=2a915351ee2c');
+  const response=await fetch('./data/redewendungen-sprichwoerter.jsonl?v=a6bd06da8ca6');
   if(!response.ok)throw new Error('Dictionnaire introuvable');
   const lines=(await response.text()).trim().split('\n');
   const phrases=lines.map(line=>JSON.parse(line)).filter(item=>item.expression_de);
@@ -104,7 +104,7 @@ function finish(won){
  const heading=document.createElement('strong');
  heading.textContent=won?'Wunderbar ! Vous avez trouvé.':'Pas cette fois… mais vous avez appris !';
  result.append(heading);
- for(const text of [e[0],`Traduction littérale : « ${e[2]} »`,`Sens : ${e[3]}`,`Exemple : ${e[4]}`,e[5]]){
+ for(const text of [e[0],`Mot à mot : « ${e[2]} »`,`Sens : ${e[3]}`,`Exemple : ${e[4]}`,e[5]]){
   const p=document.createElement('p');p.textContent=text;result.append(p);
  }
  const next=document.createElement('button');next.className='next';next.textContent='L’expression suivante →';next.onclick=nextRound;
@@ -116,7 +116,7 @@ for(const row of ['AZERTYUIOP','QSDFGHJKLM','WXCVBN']){const el=document.createE
 document.addEventListener('keydown',event=>{if($('notebook').open||event.ctrlKey||event.metaKey||event.altKey||event.target.matches('input,textarea'))return;const key=normalize(event.key.normalize('NFD').replace(/[\u0300-\u036f]/g,''));if(/^[A-Z]$/.test(key)){event.preventDefault();guess(key);}});
 $('revealHint').onclick=()=>{if(helped||ended)return;helped=true;const remaining=[...new Set([...current()[0]].filter(c=>c!==' ').map(normalize))].filter(c=>!guessed.has(c));if(remaining.length){guess(remaining[0]);}$('revealHint').textContent='✧ Une lettre offerte !';render();};
 $('skip').onclick=()=>finish(false);
-$('collectionBtn').onclick=()=>{$('entries').replaceChildren();if(!learned.length){const p=document.createElement('p');p.textContent='Votre carnet attend sa première expression. Terminez une manche pour commencer !';$('entries').append(p);}for(const i of learned){const entry=document.createElement('article');entry.className='entry';const title=document.createElement('strong');title.textContent=expressions[i][0];entry.append(title);for(const text of [`Traduction littérale : « ${expressions[i][2]} »`,expressions[i][3],expressions[i][4],expressions[i][5]]){const p=document.createElement('p');p.textContent=text;entry.append(p);}$('entries').append(entry);}$('notebook').showModal();};
+$('collectionBtn').onclick=()=>{$('entries').replaceChildren();if(!learned.length){const p=document.createElement('p');p.textContent='Votre carnet attend sa première expression. Terminez une manche pour commencer !';$('entries').append(p);}for(const i of learned){const entry=document.createElement('article');entry.className='entry';const title=document.createElement('strong');title.textContent=expressions[i][0];entry.append(title);for(const text of [`Mot à mot : « ${expressions[i][2]} »`,expressions[i][3],expressions[i][4],expressions[i][5]]){const p=document.createElement('p');p.textContent=text;entry.append(p);}$('entries').append(entry);}$('notebook').showModal();};
 $('closeNotebook').onclick=()=>$('notebook').close();$('notebook').onclick=e=>{if(e.target===$('notebook')){const r=$('notebook').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('notebook').close();}};
 $('count').textContent=learned.length;$('hint').textContent=current()[1];render();
 

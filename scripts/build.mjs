@@ -27,6 +27,9 @@ for(const line of dictionary.trim().split('\n')){
  if(typeof entry.literal_fr!=='string'||!entry.literal_fr.trim()){
   throw new Error(`Traduction littérale manquante : ${entry.expression_de}`);
  }
+ if(/[\r\n]/.test(entry.literal_fr)){
+  throw new Error(`La traduction mot à mot doit tenir sur une ligne : ${entry.expression_de}`);
+ }
  if(!entry.senses?.some(sense=>sense.glosses_de?.some(gloss=>gloss.trim()))&&!entry.hint_de?.trim()){
   throw new Error(`Indice allemand manquant : ${entry.expression_de}`);
  }
