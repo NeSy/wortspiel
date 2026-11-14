@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {drawExpression,RECENT_LIMIT,USAGE_WEIGHTS} from '../dist/draw.mjs';
+import {drawExpression,RECENT_LIMIT,USAGE_WEIGHTS} from '../docs/draw.mjs';
 
 const entry=(phrase,priority)=>[phrase,'','','','','','',priority];
 function seededRandom(){
