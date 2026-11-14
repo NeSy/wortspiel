@@ -2,6 +2,10 @@
 
 Un jeu du pendu en français pour découvrir les expressions allemandes du Wiktionary. Clavier AZERTY, six erreurs possibles et progression conservée dans le navigateur.
 
+Le tirage favorise les expressions de l’allemand courant. Le champ facultatif `usage_priority` du dictionnaire distingue 193 expressions courantes (`common`, poids 20), 40 tournures moins prioritaires, notamment littéraires ou vieillies (`less_common`, poids 0,2), et les autres entrées (poids 1). Il s’agit d’une sélection éditoriale, pas de fréquences mesurées dans un corpus : une entrée non classée n’est pas nécessairement rare. Les choix s’appuient notamment sur les ressources pédagogiques [Deutsch – ganz echt!](https://deutsch-ganz-echt.de/redewendungen/liste/), [Rahat Lorenz](https://deutsch-coaching-berlin.de/redewendungen-deutsch) et [Sprachcaffe](https://www.sprachcaffe.de/uc/magazin-artikel/deutsche-redewendungen-im-alltag.htm), consultées le 14 novembre 2026, complétées par une appréciation éditoriale. Les expressions restent toutes accessibles ; environ la moitié des manches favorisent le groupe courant avec le dictionnaire actuel.
+
+Chaque manche fait un nouveau tirage pondéré. Les 30 dernières expressions affichées sont exclues, y compris après rechargement grâce à l’historique conservé dans le navigateur. Pour les petits dictionnaires, cette fenêtre se réduit à leur taille moins une. Les imports conservent leur format à six ou sept champs ; les expressions reconnues reprennent leur priorité, les autres ont le même poids standard. `npm test` vérifie la distribution du tirage et l’absence de répétitions récentes. La compilation versionne les adresses du script, du module de tirage et du dictionnaire pour renouveler le cache lors des mises à jour.
+
 ## Jouer en local
 
 ```sh

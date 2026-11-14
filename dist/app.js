@@ -1,3 +1,5 @@
+import {drawExpression,RECENT_LIMIT} from './draw.mjs?v=210ebd13f3c2';
+
 let expressions = [
 ['Tomaten auf den Augen haben','Ne pas voir ce qui est évident','Avoir des tomates sur les yeux','Ne pas remarquer quelque chose qui est pourtant juste devant soi.','Du hast wohl Tomaten auf den Augen! Der Schlüssel liegt hier.','Tu ne vois donc rien ! La clé est ici.'],
 ['Daumen drücken','Croiser les doigts','Presser les pouces','Souhaiter bonne chance à quelqu’un.','Ich drücke dir die Daumen für deine Prüfung.','Je croise les doigts pour ton examen.'],
@@ -21,15 +23,17 @@ let expressions = [
 ['Am Ball bleiben','Ne pas lâcher l’affaire','Rester au ballon','Continuer ses efforts avec persévérance.','Beim Deutschlernen musst du am Ball bleiben.','Pour apprendre l’allemand, il faut persévérer.']
 ];
 const fallbackHintsDe=["Etwas Offensichtliches nicht bemerken.", "Jemandem Glück und Erfolg wünschen.", "Eine Erklärung oder ein Gespräch überhaupt nicht verstehen.", "Etwas kaufen, ohne es vorher geprüft zu haben.", "Mit einer Aussage genau das Richtige treffen.", "Etwas geht einen nichts an.", "Überhaupt nichts verstehen.", "Großes Glück haben.", "Sich ohne Vorbereitung auf eine neue Situation einlassen.", "Ein Problem ignorieren, statt sich damit auseinanderzusetzen.", "Sehr glücklich sein, besonders wenn man verliebt ist.", "Eine Situation nicht länger ertragen wollen.", "Eigene Ängste oder Hemmungen überwinden.", "Mit einer Handlung zwei Ziele erreichen.", "Alles ist in Ordnung.", "Jemandem eine erfundene Geschichte glauben machen.", "Ein Thema nicht direkt ansprechen.", "Ein kleines Problem übermäßig wichtig nehmen.", "Sehr aufmerksam zuhören.", "Beharrlich weitermachen und nicht aufgeben."];
-expressions.forEach((entry,i)=>entry.push(fallbackHintsDe[i]));
+expressions.forEach((entry,i)=>entry.push(fallbackHintsDe[i],'common'));
 const fallbackExpressions=expressions;
+let usagePriorities=new Map(fallbackExpressions.map(entry=>[entry[0].toLocaleLowerCase('de'),entry[7]]));
 async function loadWiktionaryPhrases(){
  try{
-  const response=await fetch('./data/redewendungen-sprichwoerter.jsonl');
+  const response=await fetch('./data/redewendungen-sprichwoerter.jsonl?v=2a915351ee2c');
   if(!response.ok)throw new Error('Dictionnaire introuvable');
   const lines=(await response.text()).trim().split('\n');
   const phrases=lines.map(line=>JSON.parse(line)).filter(item=>item.expression_de);
-  if(phrases.length)expressions=phrases.map(item=>{
+  if(phrases.length){
+   const loaded=phrases.map(item=>{
    const sense=item.senses?.[0];
    const gloss=item.hint_fr?.trim();
    if(!gloss)throw new Error(`Indice français manquant : ${item.expression_de}`);
@@ -38,8 +42,11 @@ async function loadWiktionaryPhrases(){
    if(!glossDe?.trim())throw new Error(`Indice allemand manquant : ${item.expression_de}`);
    const literal=item.literal_fr?.trim();
    if(!literal)throw new Error(`Traduction littérale manquante : ${item.expression_de}`);
-   return [item.expression_de,gloss,literal,gloss,example,`Source : Wiktionary (${item.type})`,glossDe];
+   return [item.expression_de,gloss,literal,gloss,example,`Source : Wiktionary (${item.type})`,glossDe,item.usage_priority||'standard'];
   });
+   expressions=loaded;
+   usagePriorities=new Map(loaded.map(entry=>[entry[0].normalize('NFC').toLocaleLowerCase('de'),entry[7]]));
+  }
  }catch(error){console.warn('Wiktionary: utilisation du dictionnaire local.',error);}
 }
 await loadWiktionaryPhrases();
@@ -58,25 +65,31 @@ function parseDictionary(value){
   const key=cleaned[0].toLocaleLowerCase('de');if(seen.has(key))throw new Error(`Entrée ${i+1} : expression en double.`);seen.add(key);return cleaned;
  });
 }
-try{const saved=localStorage.getItem('wortspiel-dictionary');if(saved)expressions=parseDictionary(JSON.parse(saved));}catch{}
+function withUsagePriorities(rows){return rows.map(entry=>[...entry,usagePriorities.get(entry[0].toLocaleLowerCase('de'))||'standard']);}
+try{const saved=localStorage.getItem('wortspiel-dictionary');if(saved)expressions=withUsagePriorities(parseDictionary(JSON.parse(saved)));}catch{}
 const $=id=>document.getElementById(id);
 const normalize=letter=>letter.toUpperCase().replaceAll('Ä','A').replaceAll('Ö','O').replaceAll('Ü','U').replaceAll('SS','S').replaceAll('ẞ','S');
 let learned=[];try{const value=JSON.parse(localStorage.getItem('wortspiel-learned')||'[]');if(Array.isArray(value))learned=value.filter(i=>Number.isInteger(i)&&i>=0&&i<expressions.length);}catch{}
-function shuffledOrder(){
- const order=expressions.map((_,i)=>i);
- for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+let recent=[];
+try{
+ const saved=JSON.parse(localStorage.getItem('wortspiel-recent-expressions')||'[]');
+ if(Array.isArray(saved))recent=saved.filter(value=>typeof value==='string').slice(-RECENT_LIMIT);
+ const last=localStorage.getItem('wortspiel-last-expression');
+ if(last&&recent.at(-1)!==last)recent.push(last);
+}catch{}
+function drawNextExpression(){
+ const selected=drawExpression(expressions,recent);
+ recent.push(expressions[selected][0]);recent=recent.slice(-RECENT_LIMIT);
  try{
-  if(order.length>1&&expressions[order[0]][0]===localStorage.getItem('wortspiel-last-expression')){
-   const j=1+Math.floor(Math.random()*(order.length-1));[order[0],order[j]]=[order[j],order[0]];
-  }
+  localStorage.setItem('wortspiel-recent-expressions',JSON.stringify(recent));
+  localStorage.setItem('wortspiel-last-expression',expressions[selected][0]);
  }catch{}
- return order;
+ return selected;
 }
-let order=shuffledOrder(),index=0,guessed=new Set(),errors=0,ended=false,helped=false,wonRound=false;
-function save(){if(!learned.includes(order[index]))learned.push(order[index]);try{localStorage.setItem('wortspiel-learned',JSON.stringify(learned));}catch{}$('count').textContent=learned.length;}
-function current(){return expressions[order[index]];}
+let currentIndex=drawNextExpression(),guessed=new Set(),errors=0,ended=false,helped=false,wonRound=false;
+function save(){if(!learned.includes(currentIndex))learned.push(currentIndex);try{localStorage.setItem('wortspiel-learned',JSON.stringify(learned));}catch{}$('count').textContent=learned.length;}
+function current(){return expressions[currentIndex];}
 function render(){
- try{localStorage.setItem('wortspiel-last-expression',current()[0]);}catch{}
  $('hint').textContent=current()[1];
  $('hintDe').textContent=current()[6]||'Indice allemand non fourni.';
  $('phrase').replaceChildren();current()[0].split(' ').forEach(word=>{const el=document.createElement('span');el.className='word';[...word].forEach(char=>{const letter=document.createElement('span');const shown=ended||guessed.has(normalize(char));letter.className='letter'+(shown?'':' empty');letter.textContent=shown?char:'_';letter.setAttribute('aria-label',shown?char:'lettre cachée');el.append(letter);});$('phrase').append(el);});
@@ -98,7 +111,7 @@ function finish(won){
  result.append(next);result.hidden=false;$('skip').hidden=true;render();
 }
 function guess(letter){if(ended||guessed.has(letter)||! /^[A-Z]$/.test(letter))return;guessed.add(letter);if(!normalize(current()[0]).includes(letter))errors++;if(errors>=6){finish(false);return;}if([...current()[0]].every(c=>c===' '||guessed.has(normalize(c)))){finish(true);return;}render();}
-function nextRound(){index=(index+1)%order.length;guessed=new Set();errors=0;ended=false;helped=false;$('hint').textContent=current()[1];$('result').hidden=true;$('skip').hidden=false;$('revealHint').textContent='✧ Un petit coup de pouce';render();}
+function nextRound(){currentIndex=drawNextExpression();guessed=new Set();errors=0;ended=false;helped=false;$('hint').textContent=current()[1];$('result').hidden=true;$('skip').hidden=false;$('revealHint').textContent='✧ Un petit coup de pouce';render();}
 for(const row of ['AZERTYUIOP','QSDFGHJKLM','WXCVBN']){const el=document.createElement('div');el.className='key-row';for(const char of row){const key=document.createElement('button');key.className='key';key.textContent=char;key.setAttribute('aria-label',`Proposer la lettre ${char}`);key.onclick=()=>guess(char);el.append(key);}$('keyboard').append(el);}
 document.addEventListener('keydown',event=>{if($('notebook').open||event.ctrlKey||event.metaKey||event.altKey||event.target.matches('input,textarea'))return;const key=normalize(event.key.normalize('NFD').replace(/[\u0300-\u036f]/g,''));if(/^[A-Z]$/.test(key)){event.preventDefault();guess(key);}});
 $('revealHint').onclick=()=>{if(helped||ended)return;helped=true;const remaining=[...new Set([...current()[0]].filter(c=>c!==' ').map(normalize))].filter(c=>!guessed.has(c));if(remaining.length){guess(remaining[0]);}$('revealHint').textContent='✧ Une lettre offerte !';render();};
@@ -114,7 +127,7 @@ $('dictionaryFile').addEventListener('change',async event=>{
   // Write the dictionary first: quota errors leave the current game intact.
   localStorage.setItem('wortspiel-dictionary',JSON.stringify(imported));
   localStorage.removeItem('wortspiel-learned');
-  expressions=imported;learned=[];order=shuffledOrder();index=-1;
+  expressions=withUsagePriorities(imported);learned=[];
   $('count').textContent='0';$('entries').replaceChildren();nextRound();
   $('importStatus').textContent=`${expressions.length} expressions importées. Votre nouvelle partie est prête.`;
  }catch(error){$('importStatus').textContent=error instanceof SyntaxError?'Fichier JSON invalide. Vérifiez le format de l’export.':`Import impossible : ${error.message}`;}
