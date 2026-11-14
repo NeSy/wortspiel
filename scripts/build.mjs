@@ -1,10 +1,12 @@
-import {mkdir, copyFile, readFile} from 'node:fs/promises';
+import {mkdir, copyFile, readFile, writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 const html=await readFile('dist/index.html','utf8');
-if(!/<script\b[^>]*type="module"[^>]*src="app\.js"/.test(html)){
+if(!/<script\b[^>]*type="module"[^>]*src="app\.js(?:\?v=[a-f0-9]+)?"/.test(html)){
  throw new Error('app.js must load as a module to support dictionary initialization.');
 }
-const result=spawnSync(process.execPath,['--input-type=module','--check'],{input:await readFile('dist/app.js','utf8'),stdio:['pipe','inherit','inherit']});
+const app=await readFile('dist/app.js','utf8');
+const result=spawnSync(process.execPath,['--input-type=module','--check'],{input:app,stdio:['pipe','inherit','inherit']});
 if(result.status!==0)process.exit(result.status??1);
 const dictionary=await readFile('data/redewendungen-sprichwoerter.jsonl','utf8');
 for(const line of dictionary.trim().split('\n')){
@@ -21,4 +23,7 @@ for(const line of dictionary.trim().split('\n')){
 }
 await mkdir('dist/data',{recursive:true});
 await copyFile('data/redewendungen-sprichwoerter.jsonl','dist/data/redewendungen-sprichwoerter.jsonl');
+// A new script URL prevents browsers from reusing code from an earlier release.
+const version=createHash('sha256').update(app).digest('hex').slice(0,12);
+await writeFile('dist/index.html',html.replace(/src="app\.js(?:\?v=[a-f0-9]+)?"/,`src="app.js?v=${version}"`));
 console.log('GitHub Pages build ready in dist/.');
