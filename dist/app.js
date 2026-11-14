@@ -62,12 +62,21 @@ try{const saved=localStorage.getItem('wortspiel-dictionary');if(saved)expression
 const $=id=>document.getElementById(id);
 const normalize=letter=>letter.toUpperCase().replaceAll('Ä','A').replaceAll('Ö','O').replaceAll('Ü','U').replaceAll('SS','S').replaceAll('ẞ','S');
 let learned=[];try{const value=JSON.parse(localStorage.getItem('wortspiel-learned')||'[]');if(Array.isArray(value))learned=value.filter(i=>Number.isInteger(i)&&i>=0&&i<expressions.length);}catch{}
-let order=expressions.map((_,i)=>i),index=0,guessed=new Set(),errors=0,ended=false,helped=false,wonRound=false;
-// Keep the first discovery approachable; shuffle subsequent expressions.
-for(let i=order.length-1;i>1;i--){const j=1+Math.floor(Math.random()*i);[order[i],order[j]]=[order[j],order[i]];}
+function shuffledOrder(){
+ const order=expressions.map((_,i)=>i);
+ for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+ try{
+  if(order.length>1&&expressions[order[0]][0]===localStorage.getItem('wortspiel-last-expression')){
+   const j=1+Math.floor(Math.random()*(order.length-1));[order[0],order[j]]=[order[j],order[0]];
+  }
+ }catch{}
+ return order;
+}
+let order=shuffledOrder(),index=0,guessed=new Set(),errors=0,ended=false,helped=false,wonRound=false;
 function save(){if(!learned.includes(order[index]))learned.push(order[index]);try{localStorage.setItem('wortspiel-learned',JSON.stringify(learned));}catch{}$('count').textContent=learned.length;}
 function current(){return expressions[order[index]];}
 function render(){
+ try{localStorage.setItem('wortspiel-last-expression',current()[0]);}catch{}
  $('hint').textContent=current()[1];
  $('hintDe').textContent=current()[6]||'Indice allemand non fourni.';
  $('phrase').replaceChildren();current()[0].split(' ').forEach(word=>{const el=document.createElement('span');el.className='word';[...word].forEach(char=>{const letter=document.createElement('span');const shown=ended||guessed.has(normalize(char));letter.className='letter'+(shown?'':' empty');letter.textContent=shown?char:'_';letter.setAttribute('aria-label',shown?char:'lettre cachée');el.append(letter);});$('phrase').append(el);});
@@ -105,7 +114,7 @@ $('dictionaryFile').addEventListener('change',async event=>{
   // Write the dictionary first: quota errors leave the current game intact.
   localStorage.setItem('wortspiel-dictionary',JSON.stringify(imported));
   localStorage.removeItem('wortspiel-learned');
-  expressions=imported;learned=[];order=expressions.map((_,i)=>i);index=-1;
+  expressions=imported;learned=[];order=shuffledOrder();index=-1;
   $('count').textContent='0';$('entries').replaceChildren();nextRound();
   $('importStatus').textContent=`${expressions.length} expressions importées. Votre nouvelle partie est prête.`;
  }catch(error){$('importStatus').textContent=error instanceof SyntaxError?'Fichier JSON invalide. Vérifiez le format de l’export.':`Import impossible : ${error.message}`;}
